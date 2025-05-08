@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, Response
-from fastapi.middleware.cors import CORSMiddleware
-from urllib.parse import urlencode
 import logging
+from urllib.parse import urlencode
 
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, Response
 from starlette.routing import Route
 
 # Set up logging
@@ -73,33 +73,57 @@ async def auth_redirect(request: Request, test_mode: bool = False):
             margin: 20px auto; 
             max-width: 80%; 
             font-family: monospace;
-            font-size: 16px;
+            font-size: 18px;
             word-break: break-all; 
             text-align: center; 
+            border: 2px solid #ccc;
         }}
+        #countdown {{ font-weight: bold; }}
     </style>
 </head>
 <body>
     <h2>Authentication Successful!</h2>
     
-    <p>Click the button below to return to the app:</p>
-    <a href="expogoogleauth://redirect?{urlencode(params)}" class="button">
-        Return to App
-    </a>
-    
-    <hr style="margin: 30px 0;">
-    
-    <div>
-        <p>If automatic redirect doesn't work, copy this code:</p>
-        <div class="code-box">{params.get('code', '')}</div>
-        <p>Then return to your app and paste it in the manual entry field.</p>
+    <div id="codeSection">
+        <h3>Your Authentication Code:</h3>
+        <div class="code-box" onclick="copyToClipboard(this.innerText)">{params.get('code', '')}</div>
+        <p>Click the code to copy. Return to app and paste this code.</p>
+        
+        <p id="redirectNotice">Automatic redirection in <span id="countdown">15</span> seconds...</p>
+        <button onclick="redirectNow()" class="button">Redirect Now</button>
     </div>
     
     <script>
-        // Still try automatic redirect
-        setTimeout(function() {{
-            window.location.href = "expogoogleauth://redirect?{urlencode(params)}";
+        function copyToClipboard(text) {{
+            if (window.navigator && window.navigator.clipboard) {{
+                window.navigator.clipboard.writeText(text).then(function() {{
+                    alert('Code copied to clipboard!');
+                }});
+            }} else {{
+                alert('Clipboard API not supported in this browser');
+            }}
+        }}
+        
+        let seconds = 15;
+        const countdownElement = document.getElementById('countdown');
+        
+        const countdown = setInterval(function() {{
+            seconds--;
+            countdownElement.textContent = seconds;
+            if (seconds <= 0) {{
+                clearInterval(countdown);
+                redirectToApp();
+            }}
         }}, 1000);
+        
+        function redirectNow() {{
+            clearInterval(countdown);
+            redirectToApp();
+        }}
+        
+        function redirectToApp() {{
+            window.location.href = "expogoogleauth://redirect?{urlencode(params)}";
+        }}
     </script>
 </body>
 </html>
