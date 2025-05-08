@@ -13,15 +13,13 @@
     },
     "scheme": "expogoogleauth",
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.yourusername.expogoogleauth"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      },
-      "package": "com.yourusername.expogoogleauth"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
