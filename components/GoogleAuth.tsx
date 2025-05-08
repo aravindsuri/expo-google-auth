@@ -3,6 +3,7 @@ import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Button, Image, StyleSheet, Text, View } from 'react-native';
+import * as Linking from 'expo-linking';
 
 // Required for Expo auth callbacks
 WebBrowser.maybeCompleteAuthSession();
@@ -23,6 +24,10 @@ interface GoogleAuthProps {
   onAuthStateChange?: (isAuthenticated: boolean, userInfo: UserInfo | null) => void;
 }
 
+interface LinkingEvent {
+  url: string;
+}
+
 // Configure your Google OAuth credentials
 const CLIENT_ID = '870686466844-b48vci0sqn5qado9khbu9s7pqbo3mk1p.apps.googleusercontent.com';
 const REDIRECT_URI = 'https://teluu.onrender.com/google-auth-redirect';
@@ -32,20 +37,64 @@ console.log('REDIRECT_URI:', REDIRECT_URI);
 // Persist auth to storage
 const STORAGE_KEY = 'google_auth_token';
 
-const GoogleAuth: React.FC<GoogleAuthProps> = ({ onAuthStateChange }) => {
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const GoogleAuth: React.FC<GoogleAuthProps> = ({ onAuthStateChange }) => {
+    const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: CLIENT_ID,
-      responseType: 'token',
-      scopes: ['profile', 'email'],
-      redirectUri: REDIRECT_URI,
-    },
-    { authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth' }
-  );
+    const [request, response, promptAsync] = AuthSession.useAuthRequest(
+      {
+        clientId: CLIENT_ID,
+        responseType: 'code',  // Changed from 'token' to 'code'
+        scopes: ['profile', 'email'],
+        redirectUri: REDIRECT_URI,
+      },
+      { authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth' }
+    );
+
+    useEffect(() => {
+      // Configure linking
+      const handleRedirect = (event: LinkingEvent) => {
+        console.log("Received deep link:", event.url);
+        
+        // Extract authorization data from URL
+        const data = Linking.parse(event.url);
+        console.log("Parsed link data:", data);
+        
+        // Handle the authorization code
+        if (data.queryParams && data.queryParams.code) {
+          console.log("Received auth code from deep link");
+          // Here you'd normally exchange this code for tokens
+          // For now, we'll simulate success
+          const mockUserInfo = {
+            id: 'demo-user-id',
+            name: 'Test User',
+            email: 'test@example.com',
+            picture: 'https://ui-avatars.com/api/?name=Test+User&background=random',
+            verified_email: true,
+            given_name: 'Test',
+            family_name: 'User',
+            locale: 'en'
+          };
+          setUserInfo(mockUserInfo);
+        }
+    };
+
+  const subscription = Linking.addEventListener('url', handleRedirect);
+
+  // Check for initial URL that may have launched the app
+  Linking.getInitialURL().then(url => {
+    if (url) {
+      console.log("App opened with initial URL:", url);
+      handleRedirect({ url });
+    }
+  });
+
+  // Clean up
+  return () => {
+    subscription.remove();
+  };
+}, []);
 
   // Check for stored auth token on component mount
   useEffect(() => {
@@ -75,11 +124,51 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onAuthStateChange }) => {
   // Handle auth response changes
   useEffect(() => {
     if (response?.type === 'success') {
-      const { access_token } = response.params;
-      // Store the token
-      storeToken({ accessToken: access_token });
-      // Fetch user info with the token
-      fetchUserInfo(access_token);
+      const { code } = response.params;
+      console.log('Auth successful! Received authorization code:', code);
+      
+      // In a real app, you would exchange this code for tokens via a server
+      // For demo purposes, simulate getting a token from the code
+      const simulatedTokenExchange = async () => {
+        try {
+          // Simulate API delay
+          setLoading(true);
+          
+          // In a real implementation, you would make a request to your backend
+          // which would exchange the code for tokens using Google's token endpoint
+          
+          // Simulate a successful token response
+          const mockTokenResponse = {
+            access_token: `mock_token_${Date.now()}`,
+            id_token: 'mock_id_token',
+            expires_in: 3600
+          };
+          
+          // Store the token
+          storeToken({ accessToken: mockTokenResponse.access_token });
+          
+          // Use the token to fetch user info (or use mock data)
+          const mockUserInfo: UserInfo = {
+            id: 'demo-user-id',
+            name: 'Test User',
+            email: 'test@example.com',
+            picture: 'https://ui-avatars.com/api/?name=Test+User&background=random',
+            verified_email: true,
+            given_name: 'Test',
+            family_name: 'User',
+            locale: 'en'
+          };
+          
+          setUserInfo(mockUserInfo);
+        } catch (error) {
+          console.error('Error in token exchange:', error);
+          setError('Failed to exchange code for token');
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      simulatedTokenExchange();
     } else if (response?.type === 'error') {
       setError(response.params.error || 'Authentication failed');
       setLoading(false);
@@ -147,6 +236,38 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onAuthStateChange }) => {
     );
   }
 
+  const attemptSignIn = async () => {
+    console.log('Attempting Google sign-in with config:');
+    console.log('- Client ID:', CLIENT_ID.substring(0, 8) + '...');
+    console.log('- Redirect URI:', REDIRECT_URI);
+    
+    try {
+      const result = await promptAsync();
+      console.log('Auth result type:', result.type);
+      
+      // Check if the user canceled the flow
+      if (result.type === 'cancel') {
+        console.log('User canceled the authentication');
+      } 
+      // Check for dismiss (user closed the browser)
+      else if (result.type === 'dismiss') {
+        console.log('Authentication dismissed');
+      }
+      // Check for success but with possible error
+      else if (result.type === 'success') {
+        if (result.params.error) {
+          console.error('Auth succeeded but with error:', result.params.error);
+        } else {
+          console.log('Auth succeeded with token');
+        }
+      }
+      // Log the full result
+      console.log('Full auth result:', JSON.stringify(result, null, 2));
+    } catch (error) {
+      console.error('Auth error:', error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {error && <Text style={styles.error}>{error}</Text>}
@@ -169,16 +290,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onAuthStateChange }) => {
           <Button
             title="Sign in with Google"
             disabled={!request}
-            onPress={() => {
-              console.log('Attempting Google sign-in...');
-              promptAsync({ showInRecents: true, useProxy: false })
-                .then(result => {
-                  console.log('Auth result:', JSON.stringify(result));
-                })
-                .catch(error => {
-                  console.error('Auth error:', error);
-                });
-            }}
+            onPress={attemptSignIn}
             color="#4285F4"
           />
         </View>
