@@ -1,14 +1,22 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from urllib.parse import urlencode
 import logging
+
+from starlette.routing import Route
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Auth Redirect Service")
+app = FastAPI(
+    title="Auth Redirect Service",
+    # This enables automatic HEAD handlers for GET routes
+    routes=[
+        Route("/{path:path}", endpoint=lambda request: None, methods=["HEAD"])
+    ]
+)
 
 # Add CORS middleware
 app.add_middleware(
