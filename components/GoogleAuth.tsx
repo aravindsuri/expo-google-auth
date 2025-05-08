@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Button, Image, ActivityIndicator } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Button, Image, StyleSheet, Text, View } from 'react-native';
 
 // Required for Expo auth callbacks
 WebBrowser.maybeCompleteAuthSession();
@@ -25,9 +25,7 @@ interface GoogleAuthProps {
 
 // Configure your Google OAuth credentials
 const CLIENT_ID = '870686466844-b48vci0sqn5qado9khbu9s7pqbo3mk1p.apps.googleusercontent.com';
-const REDIRECT_URI = AuthSession.makeRedirectUri({
-  scheme: 'expogoogleauth'
-});
+const REDIRECT_URI = 'https://teluu.onrender.com/google-auth-redirect';
 
 console.log('REDIRECT_URI:', REDIRECT_URI);
 
@@ -173,9 +171,9 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onAuthStateChange }) => {
             disabled={!request}
             onPress={() => {
               console.log('Attempting Google sign-in...');
-              promptAsync({ showInRecents: true })
+              promptAsync({ showInRecents: true, useProxy: false })
                 .then(result => {
-                  console.log('Auth result:', result);
+                  console.log('Auth result:', JSON.stringify(result));
                 })
                 .catch(error => {
                   console.error('Auth error:', error);

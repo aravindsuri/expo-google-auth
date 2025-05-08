@@ -23,8 +23,12 @@ app.add_middleware(
 async def auth_redirect(request: Request, test_mode: bool = False):
     """
     Receive the OAuth response from Google and redirect to the Expo app
-    All query parameters are preserved and passed to the Expo app
     """
+    # Log the full request details
+    logger.info(f"Request URL: {request.url}")
+    logger.info(f"Request headers: {dict(request.headers)}")
+    logger.info(f"Query parameters: {dict(request.query_params)}")
+    
     # Get all query parameters
     params = dict(request.query_params)
     
@@ -36,8 +40,11 @@ async def auth_redirect(request: Request, test_mode: bool = False):
     safe_params = {k: '***' if k in ['code', 'access_token', 'id_token'] else v for k, v in params.items()}
     logger.info(f"Received auth redirect with params: {safe_params}")
     
+    # If no parameters were provided, log a warning
+    if not params:
+        logger.warning("No parameters received in redirect - possible authentication cancelation or error")
+    
     # Construct the redirect URL to your Expo app
-    # Using the expogoogleauth:// scheme defined in your app.json
     redirect_url = f"expogoogleauth://redirect?{urlencode(params)}"
     
     # If test_mode is True, just return the info instead of redirecting
