@@ -42,13 +42,15 @@ const STORAGE_KEY = 'google_auth_token';
    // Use Google's discovery document for proper endpoints
     const discovery = AuthSession.useAutoDiscovery('https://accounts.google.com');
 
+    const REDIRECT_URI = 'https://teluu.onrender.com/google-auth-redirect';
+    console.log('Using custom redirect URI:', REDIRECT_URI);
+
     const [request, response, promptAsync] = AuthSession.useAuthRequest(
       {
         clientId: CLIENT_ID,
         responseType: 'code',
         scopes: ['profile', 'email'],
-        // Still need to provide redirectUri for TypeScript
-        redirectUri: AuthSession.makeRedirectUri()
+        redirectUri: REDIRECT_URI
       },
       discovery
     );
@@ -128,7 +130,11 @@ const STORAGE_KEY = 'google_auth_token';
       
       simulatedTokenExchange();
     } else if (response?.type === 'error') {
+      console.error('Auth error details:', response.params);
       setError(response.params.error || 'Authentication failed');
+      setLoading(false);
+    } else if (response?.type === 'cancel') {
+      console.log('Auth was canceled');
       setLoading(false);
     }
   }, [response]);
@@ -198,26 +204,35 @@ const STORAGE_KEY = 'google_auth_token';
     console.log('Attempting Google sign-in with Expo proxy');
     console.log('- Client ID:', CLIENT_ID.substring(0, 8) + '...');
   
+    setLoading(true);
+
     try {
       // Use the proxy option for reliable auth in Expo Go
       const result = await promptAsync();
       console.log('Auth result type:', result.type);
       
-      if (result.type === 'cancel') {
-        console.log('User canceled the authentication');
-      } else if (result.type === 'dismiss') {
-        console.log('Authentication dismissed');
-      } else if (result.type === 'success') {
-        if (result.params.error) {
-          console.error('Auth succeeded but with error:', result.params.error);
-        } else {
-          console.log('Auth succeeded with code');
-        }
+       if (result.type === 'cancel') {
+      console.log('User canceled the authentication');
+      setLoading(false); // Reset loading state for cancel
+    } else if (result.type === 'dismiss') {
+      console.log('Authentication dismissed');
+      setLoading(false); // Reset loading state for dismiss
+    } else if (result.type === 'success') {
+      if (result.params.error) {
+        console.error('Auth succeeded but with error:', result.params.error);
+        setError(result.params.error);
+        setLoading(false); // Reset loading state for error
+      } else {
+        console.log('Auth succeeded with code');
+        // Success case loading is handled in the useEffect
       }
+    }
       
       console.log('Full auth result:', JSON.stringify(result, null, 2));
     } catch (error) {
       console.error('Auth error:', error);
+      setError('Authentication failed: ' + (error instanceof Error ? error.message : String(error)));
+      setLoading(false);
     }
   };
 
@@ -238,7 +253,7 @@ const STORAGE_KEY = 'google_auth_token';
             Sign in with your Google account.
           </Text>
           <Text style={styles.redirectText}>
-            Using Expo Authentication Proxy
+            Using Custom Redirect Service
           </Text>
           <Button
             title="Sign in with Google"

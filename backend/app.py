@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from urllib.parse import urlencode
 import logging
@@ -26,6 +26,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.head("/google-auth-redirect")
+async def head_auth_redirect():
+    """Handle HEAD requests to the redirect endpoint"""
+    logger.info("Received HEAD request to /google-auth-redirect")
+    return Response(status_code=200)
 
 @app.get("/google-auth-redirect")
 async def auth_redirect(request: Request, test_mode: bool = False):
@@ -63,8 +69,8 @@ async def auth_redirect(request: Request, test_mode: bool = False):
         </style>
     </head>
     <body>
-        <h2>Authentication Successful!</h2>
-        <p>Redirecting back to the app...</p>
+        <p>Authentication successful! You'll now be redirected back to your app.</p>
+        <p style="font-size: 14px; color: #666;">If you're using Expo Go, you may need to click the button below.</p>
         
         <div id="manual" style="display: none; margin-top: 30px;">
             <p>If you're not automatically redirected, click the button below:</p>
