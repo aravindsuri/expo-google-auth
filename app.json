@@ -12,6 +12,14 @@
       "backgroundColor": "#ffffff"
     },
     "scheme": "expogoogleauth",
+    "plugins": [
+      [
+        "expo-linking",
+        {
+          "schemes": ["expogoogleauth"]
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true
     },
@@ -20,7 +28,22 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.aravindsuri.expogoogleauth"
+      "package": "com.aravindsuri.expogoogleauth",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "expogoogleauth"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
