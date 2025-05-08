@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, Image, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Button, Image, StyleSheet, Text, TextInput, View } from 'react-native';
 
 
 // Required for Expo auth callbacks
@@ -39,12 +39,56 @@ const STORAGE_KEY = 'google_auth_token';
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const [manualCode, setManualCode] = useState('');
+
    // Use Google's discovery document for proper endpoints
     const discovery = AuthSession.useAutoDiscovery('https://accounts.google.com');
 
     const REDIRECT_URI = 'https://teluu.onrender.com/google-auth-redirect';
     console.log('Using custom redirect URI:', REDIRECT_URI);
 
+    // Store auth token in AsyncStorage
+    const storeToken = useCallback(async (tokenData: { accessToken: string }) => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tokenData));
+      } catch (e) {
+        console.error('Failed to save auth token', e);
+      }
+    }, []);
+
+    const simulatedTokenExchange = useCallback(async (authCode: string) => {
+      try {
+        setLoading(true);
+        
+        // Mock token response and rest of the function...
+        const mockTokenResponse = {
+          access_token: `mock_token_${Date.now()}`,
+          id_token: 'mock_id_token',
+          expires_in: 3600
+        };
+        
+        storeToken({ accessToken: mockTokenResponse.access_token });
+        
+        const mockUserInfo: UserInfo = {
+          id: 'demo-user-id',
+          name: 'Test User',
+          email: 'test@example.com',
+          picture: 'https://ui-avatars.com/api/?name=Test+User&background=random',
+          verified_email: true,
+          given_name: 'Test',
+          family_name: 'User',
+          locale: 'en'
+        };
+        
+        setUserInfo(mockUserInfo);
+      } catch (error) {
+        console.error('Error in token exchange:', error);
+        setError('Failed to exchange code for token');
+      } finally {
+        setLoading(false);
+      }
+    }, [setLoading, setUserInfo, setError, storeToken]);
+  
     const [request, response, promptAsync] = AuthSession.useAuthRequest(
       {
         clientId: CLIENT_ID,
@@ -56,6 +100,7 @@ const STORAGE_KEY = 'google_auth_token';
     );
 
    
+
   // Check for stored auth token on component mount
   useEffect(() => {
     const loadStoredAuth = async () => {
@@ -87,48 +132,8 @@ const STORAGE_KEY = 'google_auth_token';
       const { code } = response.params;
       console.log('Auth successful! Received authorization code:', code);
       
-      // In a real app, you would exchange this code for tokens via a server
-      // For demo purposes, simulate getting a token from the code
-      const simulatedTokenExchange = async () => {
-        try {
-          // Simulate API delay
-          setLoading(true);
-          
-          // In a real implementation, you would make a request to your backend
-          // which would exchange the code for tokens using Google's token endpoint
-          
-          // Simulate a successful token response
-          const mockTokenResponse = {
-            access_token: `mock_token_${Date.now()}`,
-            id_token: 'mock_id_token',
-            expires_in: 3600
-          };
-          
-          // Store the token
-          storeToken({ accessToken: mockTokenResponse.access_token });
-          
-          // Use the token to fetch user info (or use mock data)
-          const mockUserInfo: UserInfo = {
-            id: 'demo-user-id',
-            name: 'Test User',
-            email: 'test@example.com',
-            picture: 'https://ui-avatars.com/api/?name=Test+User&background=random',
-            verified_email: true,
-            given_name: 'Test',
-            family_name: 'User',
-            locale: 'en'
-          };
-          
-          setUserInfo(mockUserInfo);
-        } catch (error) {
-          console.error('Error in token exchange:', error);
-          setError('Failed to exchange code for token');
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      simulatedTokenExchange();
+      // Use the standalone function
+      simulatedTokenExchange(code);
     } else if (response?.type === 'error') {
       console.error('Auth error details:', response.params);
       setError(response.params.error || 'Authentication failed');
@@ -137,7 +142,7 @@ const STORAGE_KEY = 'google_auth_token';
       console.log('Auth was canceled');
       setLoading(false);
     }
-  }, [response]);
+  }, [response, simulatedTokenExchange]);
 
   // Notify parent component when auth state changes
   useEffect(() => {
@@ -146,13 +151,19 @@ const STORAGE_KEY = 'google_auth_token';
     }
   }, [userInfo, onAuthStateChange]);
 
-  // Store auth token in AsyncStorage
-  const storeToken = async (tokenData: { accessToken: string }) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tokenData));
-    } catch (e) {
-      console.error('Failed to save auth token', e);
+  
+
+  // Handle manual code submission
+  const handleManualCodeSubmit = () => {
+    if (!manualCode || manualCode.trim() === '') {
+      setError('Please enter an authentication code');
+      return;
     }
+    
+    console.log('Processing manual auth code:', manualCode);
+    
+    // Use the standalone function with the manual code
+    simulatedTokenExchange(manualCode);
   };
 
   // Fetch user info from Google
@@ -261,6 +272,21 @@ const STORAGE_KEY = 'google_auth_token';
             onPress={attemptSignIn}
             color="#4285F4"
           />
+
+      <Text style={styles.instructions}>
+            Enter authentication code manually
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Paste authentication code here"
+            value={manualCode}
+            onChangeText={setManualCode}
+          />
+          <Button
+            title="Submit Code"
+            onPress={handleManualCodeSubmit}
+            color="#34A853"
+          />
         </View>
       )}
     </View>
@@ -311,6 +337,26 @@ const styles = StyleSheet.create({
   error: {
     color: 'red',
     marginBottom: 10,
+  },
+  input: {
+    width: '100%',
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  separator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginVertical: 20,
+  },
+  separatorText: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 10,
+    color: '#666',
   },
 });
 

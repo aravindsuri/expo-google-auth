@@ -56,41 +56,54 @@ async def auth_redirect(request: Request, test_mode: bool = False):
     
     # For non-test mode, return an HTML page with JavaScript to help with deep linking
     html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Redirecting to App</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            body {{ font-family: Arial, sans-serif; text-align: center; padding: 20px; }}
-            .button {{ background: #4285F4; color: white; padding: 12px 20px; 
-                      border: none; border-radius: 4px; font-size: 16px; 
-                      text-decoration: none; display: inline-block; margin-top: 20px; }}
-        </style>
-    </head>
-    <body>
-        <p>Authentication successful! You'll now be redirected back to your app.</p>
-        <p style="font-size: 14px; color: #666;">If you're using Expo Go, you may need to click the button below.</p>
-        
-        <div id="manual" style="display: none; margin-top: 30px;">
-            <p>If you're not automatically redirected, click the button below:</p>
-            <a href="expogoogleauth://redirect?{urlencode(params)}" class="button">
-                Return to App
-            </a>
-        </div>
-        
-        <script>
-            // Try to open the app with the custom scheme
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Complete</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {{ font-family: Arial, sans-serif; text-align: center; padding: 20px; }}
+        .button {{ background: #4285F4; color: white; padding: 12px 20px; 
+                  border: none; border-radius: 4px; font-size: 16px; 
+                  text-decoration: none; display: inline-block; margin-top: 20px; }}
+        .code-box {{ 
+            background: #eee; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin: 20px auto; 
+            max-width: 80%; 
+            font-family: monospace;
+            font-size: 16px;
+            word-break: break-all; 
+            text-align: center; 
+        }}
+    </style>
+</head>
+<body>
+    <h2>Authentication Successful!</h2>
+    
+    <p>Click the button below to return to the app:</p>
+    <a href="expogoogleauth://redirect?{urlencode(params)}" class="button">
+        Return to App
+    </a>
+    
+    <hr style="margin: 30px 0;">
+    
+    <div>
+        <p>If automatic redirect doesn't work, copy this code:</p>
+        <div class="code-box">{params.get('code', '')}</div>
+        <p>Then return to your app and paste it in the manual entry field.</p>
+    </div>
+    
+    <script>
+        // Still try automatic redirect
+        setTimeout(function() {{
             window.location.href = "expogoogleauth://redirect?{urlencode(params)}";
-            
-            // Show manual button after a short delay
-            setTimeout(function() {{
-                document.getElementById('manual').style.display = 'block';
-            }}, 2000);
-        </script>
-    </body>
-    </html>
-    """
+        }}, 1000);
+    </script>
+</body>
+</html>
+"""
     
     logger.info(f"Returning HTML with deep link to: expogoogleauth://redirect?[params]")
     return HTMLResponse(content=html_content)
