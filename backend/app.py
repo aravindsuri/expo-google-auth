@@ -34,7 +34,7 @@ async def head_auth_redirect():
     return Response(status_code=200)
 
 @app.get("/google-auth-redirect")
-async def auth_redirect(request: Request, test_mode: bool = False, source_app: str = None):
+async def auth_redirect(request: Request, test_mode: bool = False, source_app: str = None, dev_mode: bool = False):
     # Get all query parameters
     params = dict(request.query_params)
     
@@ -43,7 +43,9 @@ async def auth_redirect(request: Request, test_mode: bool = False, source_app: s
         del params["test_mode"]
     if "source_app" in params:
         source_app = params.pop("source_app")
-    
+    if "dev_mode" in params:
+        dev_mode = params.pop("dev_mode") == "true"
+
     # Determine which app scheme to use
     app_scheme = "mobile"  # Default to mobile
     if source_app:
@@ -53,16 +55,31 @@ async def auth_redirect(request: Request, test_mode: bool = False, source_app: s
     safe_params = {k: '***' if k in ['code', 'access_token', 'id_token'] else v for k, v in params.items()}
     logger.info(f"Received auth redirect with params: {safe_params} for app: {app_scheme}")
     
+
     # If test_mode is True, just return the info instead of redirecting
     if test_mode:
+        redirect_url = f"{app_scheme}://redirect?{urlencode(params)}"
+        if dev_mode:
+            redirect_url = f"exp://192.168.0.85:8081/--/redirect?{urlencode(params)}"
+            
         return {
             "message": "Test mode - would redirect to:",
-            "redirect_url": f"{app_scheme}://redirect?{urlencode(params)}",
+            "redirect_url": redirect_url,
             "params": safe_params,
-            "app": app_scheme
+            "app": app_scheme,
+            "dev_mode": dev_mode
         }
     
+    # Create the appropriate redirect URL based on dev_mode
+    redirect_url = f"{app_scheme}://redirect?{urlencode(params)}"
     
+    if dev_mode:
+        redirect_url = f"exp://192.168.0.85:8081/--/redirect?{urlencode(params)}"
+        logger.info(f"Using Expo development mode redirect to: {redirect_url}")
+    else:
+        logger.info(f"Using production redirect to: {redirect_url}")
+
+
     # For non-test mode, return an HTML page with JavaScript to help with deep linking
     html_content = f"""
 <!DOCTYPE html>
@@ -131,14 +148,14 @@ async def auth_redirect(request: Request, test_mode: bool = False, source_app: s
         }}
         
         function redirectToApp() {{
-            window.location.href = "{app_scheme}://redirect?{urlencode(params)}";
+            window.location.href = "{redirect_url}";
         }}
     </script>
 </body>
 </html>
 """
     
-    logger.info(f"Returning HTML with deep link to: {app_scheme}://redirect?[params]")
+    logger.info(f"Returning HTML with deep link to: {redirect_url}")
     return HTMLResponse(content=html_content)
 
 @app.get("/")
