@@ -46,8 +46,8 @@ async def auth_redirect(request: Request, test_mode: bool = False, source_app: s
     
     # Determine which app scheme to use
     app_scheme = "mobile"  # Default to mobile
-    if source_app == "test":
-        app_scheme = "expogoogleauth"
+    if source_app:
+        app_scheme = source_app
     
     # Log the parameters (excluding sensitive data)
     safe_params = {k: '***' if k in ['code', 'access_token', 'id_token'] else v for k, v in params.items()}
