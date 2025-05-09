@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthSession from 'expo-auth-session';
+import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Button, Image, StyleSheet, Text, TextInput, View } from 'react-native';
-
 
 // Required for Expo auth callbacks
 WebBrowser.maybeCompleteAuthSession();
@@ -44,7 +44,7 @@ const STORAGE_KEY = 'google_auth_token';
    // Use Google's discovery document for proper endpoints
     const discovery = AuthSession.useAutoDiscovery('https://accounts.google.com');
 
-    const REDIRECT_URI = 'https://teluu.onrender.com/google-auth-redirect';
+    const REDIRECT_URI = 'https://teluu.onrender.com/google-auth-redirect?source_app=expogoogleauth';
     console.log('Using custom redirect URI:', REDIRECT_URI);
 
     // Store auth token in AsyncStorage
@@ -99,8 +99,40 @@ const STORAGE_KEY = 'google_auth_token';
       discovery
     );
 
-   
+    useEffect(() => {
+      const handleDeepLink = (event: { url: string }) => {
+        console.log("Deep link received:", event.url);
+        
+        try {
+          // Parse the URL
+          const parsedUrl = Linking.parse(event.url);
+          console.log("Parsed deep link:", parsedUrl);
+          
+          // Check if there's an auth code
+          if (parsedUrl.queryParams && parsedUrl.queryParams.code) {
+            console.log("Found code in deep link:", parsedUrl.queryParams.code);
+            simulatedTokenExchange(parsedUrl.queryParams.code as string);
+          }
+        } catch (error) {
+          console.error("Error handling deep link:", error);
+        }
+      };
 
+      const subscription = Linking.addEventListener('url', handleDeepLink);
+
+      Linking.getInitialURL().then(url => {
+        if (url) {
+          console.log("App opened with URL:", url);
+          handleDeepLink({ url });
+        }
+      });
+      
+      // Clean up
+      return () => {
+        subscription.remove();
+      };
+    }, [simulatedTokenExchange]);
+    
   // Check for stored auth token on component mount
   useEffect(() => {
     const loadStoredAuth = async () => {

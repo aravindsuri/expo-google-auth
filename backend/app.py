@@ -34,25 +34,34 @@ async def head_auth_redirect():
     return Response(status_code=200)
 
 @app.get("/google-auth-redirect")
-async def auth_redirect(request: Request, test_mode: bool = False):
+async def auth_redirect(request: Request, test_mode: bool = False, source_app: str = None):
     # Get all query parameters
     params = dict(request.query_params)
     
-    # Remove test_mode from params if it exists
+    # Remove test_mode and source_app from params if they exist
     if "test_mode" in params:
         del params["test_mode"]
+    if "source_app" in params:
+        source_app = params.pop("source_app")
+    
+    # Determine which app scheme to use
+    app_scheme = "mobile"  # Default to mobile
+    if source_app == "test":
+        app_scheme = "expogoogleauth"
     
     # Log the parameters (excluding sensitive data)
     safe_params = {k: '***' if k in ['code', 'access_token', 'id_token'] else v for k, v in params.items()}
-    logger.info(f"Received auth redirect with params: {safe_params}")
+    logger.info(f"Received auth redirect with params: {safe_params} for app: {app_scheme}")
     
     # If test_mode is True, just return the info instead of redirecting
     if test_mode:
         return {
             "message": "Test mode - would redirect to:",
-            "redirect_url": f"expogoogleauth://redirect?{urlencode(params)}",
-            "params": safe_params
+            "redirect_url": f"{app_scheme}://redirect?{urlencode(params)}",
+            "params": safe_params,
+            "app": app_scheme
         }
+    
     
     # For non-test mode, return an HTML page with JavaScript to help with deep linking
     html_content = f"""
@@ -122,14 +131,14 @@ async def auth_redirect(request: Request, test_mode: bool = False):
         }}
         
         function redirectToApp() {{
-            window.location.href = "expogoogleauth://redirect?{urlencode(params)}";
+            window.location.href = "{app_scheme}://redirect?{urlencode(params)}";
         }}
     </script>
 </body>
 </html>
 """
     
-    logger.info(f"Returning HTML with deep link to: expogoogleauth://redirect?[params]")
+    logger.info(f"Returning HTML with deep link to: {app_scheme}://redirect?[params]")
     return HTMLResponse(content=html_content)
 
 @app.get("/")
